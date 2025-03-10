@@ -18,20 +18,35 @@ Además, integra Apache Airflow para la gestión de tareas como la carga, prepro
 ## 📚 Estructura del Proyecto
 
 📦 penguin_project
+
 │-- 📂 app/                    # Código de la API en FastAPI
+
 │   │-- 📄 fastapi_penguins.py  # API FastAPI con modelos ML
+
 │-- 📂 dags/                   # DAGs de Airflow para procesamiento de datos
+
 │   │-- 📄 1_mysql.py           # Reseteo de la base de datos
+
 │   │-- 📄 2_load_data.py       # Carga de datos en MySQL
+
 │   │-- 📄 3_preprocess.py      # Preprocesamiento de datos
+
 │   │-- 📄 4_train_model.py     # Entrenamiento de modelos
+
 │-- 📂 models/                 # Modelos entrenados (.pkl)
+
 │-- 📂 static/                 # Archivos estáticos (HTML, CSS, JS)
+
 │-- 📂 Archivos_Profesor/      # Dataset original (CSV)
+
 │-- 📄 Dockerfile              # Configuración de la imagen Docker
+
 │-- 📄 docker-compose.yml      # Orquestación de servicios con Docker Compose
+
 │-- 📄 requirements.txt        # Dependencias de Python
+
 │-- 📄 requirements.uv         # Dependencias con UV
+
 │-- 📄 README.md               # Documentación del proyecto
 
 ## 🛠️ Instalación y Ejecución Local
