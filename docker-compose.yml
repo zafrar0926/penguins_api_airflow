@@ -154,7 +154,7 @@ services:
     environment:
       - PORT=8989
     command: >
-      bash -c "pip install fastapi uvicorn && pip install -r requirements.uv && uvicorn app.fastapi_penguins:app --host 0.0.0.0 --port 8989"
+      bash -c "uvicorn app.fastapi_penguins:app --host 0.0.0.0 --port 8989"
     restart: on-failure
 
 volumes:
