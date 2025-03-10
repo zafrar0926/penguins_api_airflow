@@ -1,0 +1,9 @@
+jupyterlab
+scikit-learn==1.5.1
+pandas
+joblib
+matplotlib
+xgboost==2.1.4
+fastapi
+uvicorn
+dill

@@ -1,0 +1,165 @@
+services:
+  # Base de datos MySQL para el proyecto
+  mysql:
+    image: mysql:latest
+    container_name: mysql_container
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: penguins_db
+      MYSQL_USER: airflow
+      MYSQL_PASSWORD: airflow
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: on-failure
+
+  # Airflow - PostgreSQL (necesario para Airflow)
+  postgres:
+    image: postgres:13
+    container_name: postgres_container
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    restart: on-failure
+
+  # Airflow - Redis (necesario para CeleryExecutor)
+  redis:
+    image: redis:latest
+    container_name: redis_container
+    expose:
+      - "6379"
+    restart: on-failure
+
+  # Servicio de inicialización de Airflow (se ejecuta solo una vez)
+  airflow-init:
+    image: apache/airflow:2.7.0-python3.9
+    container_name: airflow_init
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    entrypoint: >
+      /bin/bash -c "
+      airflow db init &&
+      airflow db upgrade &&
+      airflow users create --username airflow --password airflow --firstname Admin --lastname User --role Admin --email admin@example.com
+      "
+    restart: "no"
+
+  # Airflow Webserver
+  airflow-webserver:
+    image: apache/airflow:2.7.0-python3.9
+    container_name: airflow-webserver
+    command: webserver
+    depends_on:
+      - airflow-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+      AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      _PIP_ADDITIONAL_REQUIREMENTS: "pymysql pandas numpy matplotlib seaborn scikit-learn==1.5.1 xgboost joblib"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - airflow_plugins:/opt/airflow/plugins
+      - ./Archivos_Profesor:/opt/airflow/Archivos_Profesor
+      - ./models:/opt/airflow/models  # <---- Agrega esto
+      
+    restart: on-failure
+
+  # Airflow Scheduler
+  airflow-scheduler:
+    image: apache/airflow:2.7.0-python3.9
+    container_name: airflow-scheduler
+    command: scheduler
+    depends_on:
+      - airflow-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      _PIP_ADDITIONAL_REQUIREMENTS: "pymysql pandas numpy matplotlib seaborn scikit-learn==1.5.1 xgboost joblib"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - airflow_plugins:/opt/airflow/plugins
+      - ./Archivos_Profesor:/opt/airflow/Archivos_Profesor
+      - ./models:/opt/airflow/models  # <---- Agrega esto
+    restart: on-failure
+
+  # Airflow Worker (Celery)
+  airflow-worker:
+    image: apache/airflow:2.7.0-python3.9
+    container_name: airflow-worker
+    command: celery worker
+    depends_on:
+      - airflow-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      _PIP_ADDITIONAL_REQUIREMENTS: "pymysql pandas numpy matplotlib seaborn scikit-learn==1.5.1 xgboost joblib"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - airflow_plugins:/opt/airflow/plugins
+      - ./Archivos_Profesor:/opt/airflow/Archivos_Profesor
+      - ./models:/opt/airflow/models  # <---- Agrega esto
+    restart: on-failure
+  
+  # Airflow Triggerer (si lo necesitas)
+  airflow-triggerer:
+    image: apache/airflow:2.7.0-python3.9
+    container_name: airflow-triggerer
+    command: triggerer
+    depends_on:
+      - airflow-init
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      _PIP_ADDITIONAL_REQUIREMENTS: "pymysql pandas numpy matplotlib seaborn scikit-learn==1.5.1 xgboost joblib"
+    restart: on-failure
+
+  # JupyterLab para exploración de datos
+  jupyterlab:
+    image: python:3.9
+    container_name: jupyter_container
+    working_dir: /workspace
+    volumes:
+      - shared_models:/workspace/models
+    ports:
+      - "8888:8888"
+    command: >
+      bash -c "pip install uv jupyterlab && jupyter lab --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token='' --NotebookApp.password=''"
+    restart: on-failure
+
+  # API FastAPI para inferencia
+  fastapi:
+    build: .
+    container_name: fastapi_container
+    working_dir: /app
+    volumes:
+      # - shared_models:/app/models se usaba cuando el modelo estaba almacenado en local
+      - ./models:/opt/airflow/models
+    ports:
+      - "8989:8989"
+    depends_on:
+      - jupyterlab
+    environment:
+      - PORT=8989
+    command: >
+      bash -c "pip install fastapi uvicorn && pip install -r requirements.uv && uvicorn app.fastapi_penguins:app --host 0.0.0.0 --port 8989"
+    restart: on-failure
+
+volumes:
+  airflow_logs:
+  airflow_plugins:
+  shared_models:
+  mysql_data:
+  postgres-db-volume:
