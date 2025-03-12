@@ -8,7 +8,8 @@ import os
 
 # Definir rutas
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_DIR = "/app/models"
+# MODEL_DIR = "/app/models"
+MODEL_DIR = "/opt/airflow/models"
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
 # Cargar modelos con manejo de errores
@@ -16,7 +17,7 @@ try:
     clf = joblib.load(os.path.join(MODEL_DIR, "decision_tree_model.pkl"))
     xgb_model = joblib.load(os.path.join(MODEL_DIR, "xgboost_model.pkl"))
    # svm_model = joblib.load(os.path.join(MODEL_DIR, "svm_model.pkl"))
-    label_encoders = joblib.load(os.path.join(MODEL_DIR, "label_encoders.pkl"))
+  #  label_encoders = joblib.load(os.path.join(MODEL_DIR, "label_encoders.pkl"))
 except FileNotFoundError as e:
     raise RuntimeError(f"Error: No se encontró el archivo del modelo: {e}")
 except Exception as e:
@@ -63,9 +64,9 @@ def predict_species(data: PenguinInput):
         input_data = pd.DataFrame([data.dict()])
 
         # Transformar variables categóricas
-        for col in ["island", "sex"]:
-            if col in input_data:
-                input_data[col] = label_encoders[col].transform(input_data[col])
+        # for col in ["island", "sex"]:
+        #    if col in input_data:
+        #         input_data[col] = label_encoders[col].transform(input_data[col])
 
         # Seleccionar el modelo
         if data.model == "decision_tree":
